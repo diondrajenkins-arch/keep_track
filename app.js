@@ -1,53 +1,78 @@
 // ── STATE ──
-let entries = JSON.parse(localStorage.getItem('kt_entries')) || [];
-let payConfig = JSON.parse(localStorage.getItem('kt_pay')) || null;
-let notifConfig = JSON.parse(localStorage.getItem('kt_notif')) || { enabled: false, billDays: 3, payDays: 1 };
-let calMonth = new Date.getMonth;
-let calYear = new Date.getFullYear;
+var entries = JSON.parse(localStorage.getItem('kt_entries')) || ;
+var payConfig = JSON.parse(localStorage.getItem('kt_pay')) || null;
+var notifConfig = JSON.parse(localStorage.getItem('kt_notif')) || { enabled: false, billDays: 3, payDays: 1 };
+var today = new Date;
+var calMonth = today.getMonth;
+var calYear = today.getFullYear;
 
 // ── NAV ──
 function showSection(id) {
- document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
- document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+ var sections = document.querySelectorAll('.section');
+ var buttons = document.querySelectorAll('.nav-btn');
+ for (var i = 0; i < sections.length; i++) {
+ sections[i].classList.remove('active');
+ }
+ for (var j = 0; j < buttons.length; j++) {
+ buttons[j].classList.remove('active');
+ }
  document.getElementById(id).classList.add('active');
- event.currentTarget.classList.add('active');
+ var btns = document.querySelectorAll('.nav-btn');
+ for (var k = 0; k < btns.length; k++) {
+ if (btns[k].getAttribute('onclick') === "showSection('" + id + "')") {
+ btns[k].classList.add('active');
+ }
+ }
  if (id === 'calendar') renderCalendar;
  if (id === 'dashboard') updateDashboard;
  if (id === 'notifications') renderReminders;
 }
 
-// ── FORM TOGGLES ──
+// ── FORM TOGGLE ──
 function toggleBillDate {
- const type = document.getElementById('entry-type').value;
- document.getElementById('bill-due-group').style.display = type === 'bills' ? 'flex' : 'none';
- document.getElementById('bill-recurring-group').style.display = type === 'bills' ? 'flex' : 'none';
- document.getElementById('custom-category-group').style.display = type === 'custom' ? 'flex' : 'none';
+ var type = document.getElementById('entry-type').value;
+ document.getElementById('bill-due-group').style.display = (type === 'bills') ? 'flex' : 'none';
+ document.getElementById('bill-recurring-group').style.display = (type === 'bills') ? 'flex' : 'none';
+ document.getElementById('custom-category-group').style.display = (type === 'custom') ? 'flex' : 'none';
+}
+
+function togglePayFreq {
+ var freq = document.getElementById('pay-frequency').value;
+ document.getElementById('biweekly-start-group').style.display = (freq === 'biweekly') ? 'flex' : 'none';
+}
+
+function toggleNotifications {
+ var enabled = document.getElementById('notif-enabled').checked;
+ document.getElementById('notif-settings').style.display = enabled ? 'block' : 'none';
+ if (enabled && Notification && Notification.permission !== 'granted') {
+ Notification.requestPermission;
+ }
 }
 
 // ── ADD ENTRY ──
 function addEntry {
- const type = document.getElementById('entry-type').value;
- const desc = document.getElementById('entry-desc').value.trim;
- const amount = parseFloat(document.getElementById('entry-amount').value);
- const date = document.getElementById('entry-date').value;
- const customCat = document.getElementById('custom-category').value.trim;
- const billDueDay = parseInt(document.getElementById('bill-due-day').value) || null;
- const billRecurring = document.getElementById('bill-recurring').value;
+ var type = document.getElementById('entry-type').value;
+ var desc = document.getElementById('entry-desc').value.trim;
+ var amount = parseFloat(document.getElementById('entry-amount').value);
+ var date = document.getElementById('entry-date').value;
+ var customCat = document.getElementById('custom-category').value.trim;
+ var billDueDay = parseInt(document.getElementById('bill-due-day').value) || null;
+ var billRecurring = document.getElementById('bill-recurring').value;
 
- if (!desc || isNaN(amount) || !date) {
+ if (!desc || isNaN(amount) || amount <= 0 || !date) {
  alert('Please fill in description, amount, and date.');
  return;
  }
 
- const entry = {
+ var entry = {
  id: Date.now,
- type,
- desc,
- amount,
- date,
- customCat: type === 'custom' ? customCat : '',
- billDueDay: type === 'bills' ? billDueDay : null,
- billRecurring: type === 'bills' ? billRecurring : 'no'
+ type: type,
+ desc: desc,
+ amount: amount,
+ date: date,
+ customCat: (type === 'custom') ? customCat : '',
+ billDueDay: (type === 'bills') ? billDueDay : null,
+ billRecurring: (type === 'bills') ? billRecurring : 'no'
  };
 
  entries.push(entry);
@@ -75,7 +100,7 @@ function saveEntries {
 
 // ── DELETE ENTRY ──
 function deleteEntry(id) {
- entries = entries.filter(e => e.id !== id);
+ entries = entries.filter(function(e) { return e.id !== id; });
  saveEntries;
  renderLog;
  updateDashboard;
@@ -83,80 +108,91 @@ function deleteEntry(id) {
 
 // ── RENDER LOG ──
 function renderLog {
- const filter = document.getElementById('filter-category').value;
- const tbody = document.getElementById('log-body');
- let filtered = filter === 'all' ? entries : entries.filter(e => e.type === filter);
+ var filter = document.getElementById('filter-category').value;
+ var tbody = document.getElementById('log-body');
+ var filtered = (filter === 'all') ? entries : entries.filter(function(e) { return e.type === filter; });
 
  if (filtered.length === 0) {
  tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">No entries yet.</td></tr>';
  return;
  }
 
- filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+ filtered.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
 
- tbody.innerHTML = filtered.map(e => {
- const isIncome = e.type === 'income';
- const label = e.type === 'custom' ? (e.customCat || 'Custom') : e.type;
- const dueDisplay = e.billDueDay ? `${e.billDueDay}${ordinal(e.billDueDay)}` : '-';
- return `
- <tr>
- <td>${formatDate(e.date)}</td>
- <td>${e.desc}</td>
- <td><span class="category-badge ${e.type}">${label}</span></td>
- <td>${dueDisplay}</td>
- <td class="${isIncome ? 'amount-income' : 'amount-expense'}">
- ${isIncome ? '+' : '-'}$${e.amount.toFixed(2)}
- </td>
- <td><button class="btn-delete" onclick="deleteEntry(${e.id})">Delete</button></td>
- </tr>
- `;
- }).join('');
+ var html = '';
+ for (var i = 0; i < filtered.length; i++) {
+ var e = filtered[i];
+ var isIncome = (e.type === 'income');
+ var label = (e.type === 'custom') ? (e.customCat || 'Custom') : e.type;
+ var dueDisplay = e.billDueDay ? (e.billDueDay + ordinal(e.billDueDay)) : '-';
+ html += '<tr>';
+ html += '<td>' + formatDate(e.date) + '</td>';
+ html += '<td>' + e.desc + '</td>';
+ html += '<td><span class="category-badge ' + e.type + '">' + label + '</span></td>';
+ html += '<td>' + dueDisplay + '</td>';
+ html += '<td class="' + (isIncome ? 'amount-income' : 'amount-expense') + '">';
+ html += (isIncome ? '+' : '-') + '$' + e.amount.toFixed(2) + '</td>';
+ html += '<td><button class="btn-delete" onclick="deleteEntry(' + e.id + ')">Delete</button></td>';
+ html += '</tr>';
+ }
+ tbody.innerHTML = html;
 }
 
 // ── DASHBOARD ──
 function updateDashboard {
- const income = entries.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
- const expenses = entries.filter(e => e.type !== 'income').reduce((s, e) => s + e.amount, 0);
- const balance = income - expenses;
+ var income = 0;
+ var expenses = 0;
+ for (var i = 0; i < entries.length; i++) {
+ if (entries[i].type === 'income') {
+ income += entries[i].amount;
+ } else {
+ expenses += entries[i].amount;
+ }
+ }
+ var balance = income - expenses;
 
- document.getElementById('total-income').textContent = `$${income.toFixed(2)}`;
- document.getElementById('total-expenses').textContent = `$${expenses.toFixed(2)}`;
+ document.getElementById('total-income').textContent = '$' + income.toFixed(2);
+ document.getElementById('total-expenses').textContent = '$' + expenses.toFixed(2);
 
- const balEl = document.getElementById('balance');
+ var balEl = document.getElementById('balance');
  balEl.className = 'card-amount ' + (balance >= 0 ? 'positive' : 'negative');
- balEl.textContent = balance < 0 ? `-$${Math.abs(balance).toFixed(2)}` : `$${balance.toFixed(2)}`;
+ balEl.textContent = (balance < 0 ? '-' : '') + '$' + Math.abs(balance).toFixed(2);
 
  renderUpcoming;
 }
 
 // ── UPCOMING ──
 function renderUpcoming {
- const list = document.getElementById('upcoming-list');
- const today = new Date;
- const items = [];
+ var list = document.getElementById('upcoming-list');
+ var now = new Date;
+ var items = ;
 
- entries.filter(e => e.type === 'bills' && e.billDueDay).forEach(e => {
- const dueDate = new Date(today.getFullYear, today.getMonth, e.billDueDay);
- if (dueDate < today) dueDate.setMonth(dueDate.getMonth + 1);
- const diff = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+ for (var i = 0; i < entries.length; i++) {
+ var e = entries[i];
+ if (e.type === 'bills' && e.billDueDay) {
+ var dueDate = new Date(now.getFullYear, now.getMonth, e.billDueDay);
+ if (dueDate < now) dueDate.setMonth(dueDate.getMonth + 1);
+ var diff = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24));
  if (diff <= 7 && diff >= 0) {
  items.push({
- label: `${e.desc} - $${e.amount.toFixed(2)} due in ${diff} day${diff !== 1 ? 's' : ''}`,
+ label: e.desc + ' - $' + e.amount.toFixed(2) + ' due in ' + diff + (diff !== 1 ? ' days' : ' day'),
  type: 'bill'
  });
  }
- });
+ }
+ }
 
  if (payConfig) {
- getPayDatesThisMonth.forEach(pd => {
- const diff = Math.ceil((pd - today) / (1000 * 60 * 60 * 24));
- if (diff <= 7 && diff >= 0) {
+ var payDates = getPayDatesThisMonth;
+ for (var j = 0; j < payDates.length; j++) {
+ var diff2 = Math.ceil((payDates[j] - now) / (1000 * 60 * 60 * 24));
+ if (diff2 <= 7 && diff2 >= 0) {
  items.push({
- label: `Pay Day in ${diff} day${diff !== 1 ? 's' : ''}`,
+ label: 'Pay Day in ' + diff2 + (diff2 !== 1 ? ' days' : ' day'),
  type: 'pay'
  });
  }
- });
+ }
  }
 
  if (items.length === 0) {
@@ -164,39 +200,41 @@ function renderUpcoming {
  return;
  }
 
- list.innerHTML = items.map(item =>
- `<li class="${item.type === 'pay' ? 'pay-item' : 'bill-item'}">${item.label}</li>`
- ).join('');
+ var html = '';
+ for (var k = 0; k < items.length; k++) {
+ html += '<li class="' + (items[k].type === 'pay' ? 'pay-item' : 'bill-item') + '">' + items[k].label + '</li>';
+ }
+ list.innerHTML = html;
 }
 
 // ── PAY DATE ──
 function savePayDate {
- const day = parseInt(document.getElementById('pay-day').value);
- const freq = document.getElementById('pay-frequency').value;
- const biweeklyStart = document.getElementById('biweekly-start').value;
+ var day = parseInt(document.getElementById('pay-day').value);
+ var freq = document.getElementById('pay-frequency').value;
+ var biweeklyStart = document.getElementById('biweekly-start').value;
 
  if (!day && freq !== 'biweekly') {
  alert('Please enter your pay day.');
  return;
  }
 
- payConfig = { day, freq, biweeklyStart };
+ payConfig = { day: day, freq: freq, biweeklyStart: biweeklyStart };
  localStorage.setItem('kt_pay', JSON.stringify(payConfig));
  document.getElementById('pay-saved-msg').textContent = 'Pay date saved!';
- setTimeout( => document.getElementById('pay-saved-msg').textContent = '', 3000);
+ setTimeout(function { document.getElementById('pay-saved-msg').textContent = ''; }, 3000);
  renderCalendar;
 }
 
 function getPayDatesThisMonth {
- if (!payConfig) return [];
- const year = calYear;
- const month = calMonth;
- const dates = [];
+ if (!payConfig) return ;
+ var year = calYear;
+ var month = calMonth;
+ var dates = ;
 
  if (payConfig.freq === 'monthly') {
  dates.push(new Date(year, month, payConfig.day));
  } else if (payConfig.freq === 'biweekly' && payConfig.biweeklyStart) {
- let d = new Date(payConfig.biweeklyStart);
+ var d = new Date(payConfig.biweeklyStart);
  while (d.getFullYear < year || (d.getFullYear === year && d.getMonth < month)) {
  d.setDate(d.getDate + 14);
  }
@@ -205,10 +243,10 @@ function getPayDatesThisMonth {
  d.setDate(d.getDate + 14);
  }
  } else if (payConfig.freq === 'weekly') {
- for (let day = 1; day <= 31; day++) {
- const d = new Date(year, month, day);
- if (d.getMonth !== month) break;
- if (d.getDay === (payConfig.day % 7)) dates.push(d);
+ for (var day = 1; day <= 31; day++) {
+ var d2 = new Date(year, month, day);
+ if (d2.getMonth !== month) break;
+ if (d2.getDay === (payConfig.day % 7)) dates.push(d2);
  }
  }
 
@@ -224,73 +262,176 @@ function changeMonth(dir) {
 }
 
 function renderCalendar {
- const grid = document.getElementById('cal-grid');
- const label = document.getElementById('cal-month-label');
- const monthNames = ['January','February','March','April','May','June',
+ var grid = document.getElementById('cal-grid');
+ var label = document.getElementById('cal-month-label');
+ var monthNames = ['January','February','March','April','May','June',
  'July','August','September','October','November','December'];
 
- label.textContent = `${monthNames[calMonth]} ${calYear}`;
+ label.textContent = monthNames[calMonth] + ' ' + calYear;
 
- const firstDay = new Date(calYear, calMonth, 1).getDay;
- const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate;
- const today = new Date;
+ var firstDay = new Date(calYear, calMonth, 1).getDay;
+ var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate;
+ var now = new Date;
 
- const payDates = getPayDatesThisMonth.map(d => d.getDate);
- const billDays = entries
- .filter(e => e.type === 'bills' && e.billDueDay)
- .map(e => e.billDueDay);
-
- const dayHeaders = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
- let html = dayHeaders.map(d => `<div class="cal-day-header">${d}</div>`).join('');
-
- for (let i = 0; i < firstDay; i++) {
- html += `<div class="cal-day empty"></div>`;
+ var payDates = getPayDatesThisMonth.map(function(d) { return d.getDate; });
+ var billDays = ;
+ for (var i = 0; i < entries.length; i++) {
+ if (entries[i].type === 'bills' && entries[i].billDueDay) {
+ billDays.push(entries[i].billDueDay);
+ }
  }
 
- for (let day = 1; day <= daysInMonth; day++) {
- const isToday = day === today.getDate && calMonth === today.getMonth && calYear === today.getFullYear;
- const isPay = payDates.includes(day);
- const isBill = billDays.includes(day);
+ var dayHeaders = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+ var html = '';
+ for (var h = 0; h < dayHeaders.length; h++) {
+ html += '<div class="cal-day-header">' + dayHeaders[h] + '</div>';
+ }
 
- let classes = 'cal-day';
+ for (var blank = 0; blank < firstDay; blank++) {
+ html += '<div class="cal-day empty"></div>';
+ }
+
+ for (var day = 1; day <= daysInMonth; day++) {
+ var isToday = (day === now.getDate && calMonth === now.getMonth && calYear === now.getFullYear);
+ var isPay = (payDates.indexOf(day) !== -1);
+ var isBill = (billDays.indexOf(day) !== -1);
+
+ var classes = 'cal-day';
  if (isToday) classes += ' today';
  else if (isPay && isBill) classes += ' pay-day bill-day';
  else if (isPay) classes += ' pay-day';
  else if (isBill) classes += ' bill-day';
 
- const dots = [
- isPay ? `<span class="cal-dot green"></span>` : '',
- isBill ? `<span class="cal-dot red"></span>` : ''
- ].join('');
+ var dots = '';
+ if (isPay) dots += '<span class="cal-dot green"></span>';
+ if (isBill) dots += '<span class="cal-dot red"></span>';
 
- html += `<div class="${classes}"><span>${day}</span>${dots}</div>`;
+ html += '<div class="' + classes + '"><span>' + day + '</span>' + dots + '</div>';
  }
 
  grid.innerHTML = html;
 }
 
 // ── NOTIFICATIONS ──
-document.addEventListener('DOMContentLoaded',  => {
- const notifToggle = document.getElementById('notif-enabled');
- if (notifToggle) {
- notifToggle.addEventListener('change', function {
- document.getElementById('notif-settings').style.display = this.checked ? 'block' : 'none';
- if (this.checked) Notification.requestPermission;
+function saveNotifSettings {
+ notifConfig = {
+ enabled: document.getElementById('notif-enabled').checked,
+ billDays: parseInt(document.getElementById('bill-reminder-days').value) || 3,
+ payDays: parseInt(document.getElementById('pay-reminder-days').value) || 1
+ };
+ localStorage.setItem('kt_notif', JSON.stringify(notifConfig));
+ document.getElementById('notif-saved-msg').textContent = 'Notification settings saved!';
+ setTimeout(function { document.getElementById('notif-saved-msg').textContent = ''; }, 3000);
+ scheduleNotifications;
+ renderReminders;
+}
+
+function scheduleNotifications {
+ if (!notifConfig.enabled || !Notification || Notification.permission !== 'granted') return;
+ var now = new Date;
+
+ for (var i = 0; i < entries.length; i++) {
+ var e = entries[i];
+ if (e.type === 'bills' && e.billDueDay) {
+ var dueDate = new Date(now.getFullYear, now.getMonth, e.billDueDay);
+ if (dueDate < now) dueDate.setMonth(dueDate.getMonth + 1);
+ var reminderDate = new Date(dueDate);
+ reminderDate.setDate(reminderDate.getDate - notifConfig.billDays);
+ var msUntil = reminderDate - now;
+ if (msUntil > 0) {
+ (function(entry) {
+ setTimeout(function {
+ new Notification('Keep Track - Bill Reminder', {
+ body: entry.desc + ' ($' + entry.amount.toFixed(2) + ') is due in ' + notifConfig.billDays + ' days.'
+ });
+ }, msUntil);
+ })(e);
+ }
+ }
+ }
+
+ if (payConfig) {
+ var payDates = getPayDatesThisMonth;
+ for (var j = 0; j < payDates.length; j++) {
+ var reminderDate2 = new Date(payDates[j]);
+ reminderDate2.setDate(reminderDate2.getDate - notifConfig.payDays);
+ var msUntil2 = reminderDate2 - now;
+ if (msUntil2 > 0) {
+ (function(days) {
+ setTimeout(function {
+ new Notification('Keep Track - Pay Day Coming', {
+ body: 'Your pay day arrives in ' + days + (days !== 1 ? ' days.' : ' day.')
+ });
+ }, msUntil2);
+ })(notifConfig.payDays);
+ }
+ }
+ }
+}
+
+// ── RENDER REMINDERS ──
+function renderReminders {
+ var list = document.getElementById('reminder-list');
+ var now = new Date;
+ var items = ;
+
+ for (var i = 0; i < entries.length; i++) {
+ var e = entries[i];
+ if (e.type === 'bills' && e.billDueDay) {
+ var dueDate = new Date(now.getFullYear, now.getMonth, e.billDueDay);
+ if (dueDate < now) dueDate.setMonth(dueDate.getMonth + 1);
+ var reminderDate = new Date(dueDate);
+ reminderDate.setDate(reminderDate.getDate - notifConfig.billDays);
+ items.push({
+ label: e.desc + ' - reminder on ' + formatDate(reminderDate.toISOString.split('T')[0]) + ' (' + notifConfig.billDays + ' days before due)',
+ type: 'bill'
  });
  }
+ }
 
- const payFreq = document.getElementById('pay-frequency');
- if (payFreq) {
- payFreq.addEventListener('change', function {
- document.getElementById('biweekly-start-group').style.display = this.value === 'biweekly' ? 'flex' : 'none';
+ if (payConfig) {
+ var payDates = getPayDatesThisMonth;
+ for (var j = 0; j < payDates.length; j++) {
+ var reminderDate2 = new Date(payDates[j]);
+ reminderDate2.setDate(reminderDate2.getDate - notifConfig.payDays);
+ items.push({
+ label: 'Pay Day reminder on ' + formatDate(reminderDate2.toISOString.split('T')[0]),
+ type: 'pay'
  });
  }
-
- const entryType = document.getElementById('entry-type');
- if (entryType) {
- entryType.addEventListener('change', toggleBillDate);
  }
 
+ if (items.length === 0) {
+ list.innerHTML = '<li class="empty-msg">No reminders scheduled.</li>';
+ return;
+ }
+
+ var html = '';
+ for (var k = 0; k < items.length; k++) {
+ html += '<li class="' + (items[k].type === 'pay' ? 'pay-item' : 'bill-item') + '">' + items[k].label + '</li>';
+ }
+ list.innerHTML = html;
+}
+
+// ── HELPERS ──
+function formatDate(dateStr) {
+ var parts = dateStr.split('-');
+ var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+ return months[parseInt(parts[1]) - 1] + ' ' + parseInt(parts[2]) + ', ' + parts[0];
+}
+
+function ordinal(n) {
+ if (n > 3 && n < 21) return 'th';
+ switch (n % 10) {
+ case 1: return 'st';
+ case 2: return 'nd';
+ case 3: return 'rd';
+ default: return 'th';
+ }
+}
+
+// ── INIT ──
+window.onload = function {
  renderLog;
  updateDashboard;
  renderCalendar;
@@ -311,108 +452,4 @@ document.addEventListener('DOMContentLoaded',  => {
  document.getElementById('biweekly-start').value = payConfig.biweeklyStart || '';
  }
  }
-});
-
-function saveNotifSettings {
- notifConfig = {
- enabled: document.getElementById('notif-enabled').checked,
- billDays: parseInt(document.getElementById('bill-reminder-days').value) || 3,
- payDays: parseInt(document.getElementById('pay-reminder-days').value) || 1
- };
- localStorage.setItem('kt_notif', JSON.stringify(notifConfig));
- document.getElementById('notif-saved-msg').textContent = 'Notification settings saved!';
- setTimeout( => document.getElementById('notif-saved-msg').textContent = '', 3000);
- scheduleNotifications;
- renderReminders;
-}
-
-function scheduleNotifications {
- if (!notifConfig.enabled || Notification.permission !== 'granted') return;
-
- const today = new Date;
-
- entries.filter(e => e.type === 'bills' && e.billDueDay).forEach(e => {
- const dueDate = new Date(today.getFullYear, today.getMonth, e.billDueDay);
- if (dueDate < today) dueDate.setMonth(dueDate.getMonth + 1);
- const reminderDate = new Date(dueDate);
- reminderDate.setDate(reminderDate.getDate - notifConfig.billDays);
- const msUntil = reminderDate - today;
- if (msUntil > 0) {
- setTimeout( => {
- new Notification('Keep Track - Bill Reminder', {
- body: `${e.desc} ($${e.amount.toFixed(2)}) is due in ${notifConfig.billDays} days.`
- });
- }, msUntil);
- }
- });
-
- if (payConfig) {
- getPayDatesThisMonth.forEach(pd => {
- const reminderDate = new Date(pd);
- reminderDate.setDate(reminderDate.getDate - notifConfig.payDays);
- const msUntil = reminderDate - today;
- if (msUntil > 0) {
- setTimeout( => {
- new Notification('Keep Track - Pay Day Coming', {
- body: `Your pay day arrives in ${notifConfig.payDays} day${notifConfig.payDays !== 1 ? 's' : ''}.`
- });
- }, msUntil);
- }
- });
- }
-}
-
-// ── RENDER REMINDERS ──
-function renderReminders {
- const list = document.getElementById('reminder-list');
- const today = new Date;
- const items = [];
-
- entries.filter(e => e.type === 'bills' && e.billDueDay).forEach(e => {
- const dueDate = new Date(today.getFullYear, today.getMonth, e.billDueDay);
- if (dueDate < today) dueDate.setMonth(dueDate.getMonth + 1);
- const reminderDate = new Date(dueDate);
- reminderDate.setDate(reminderDate.getDate - notifConfig.billDays);
- items.push({
- label: `${e.desc} - reminder on ${formatDate(reminderDate.toISOString.split('T')[0])} (${notifConfig.billDays} days before due)`,
- type: 'bill'
- });
- });
-
- if (payConfig) {
- getPayDatesThisMonth.forEach(pd => {
- const reminderDate = new Date(pd);
- reminderDate.setDate(reminderDate.getDate - notifConfig.payDays);
- items.push({
- label: `Pay Day reminder on ${formatDate(reminderDate.toISOString.split('T')[0])}`,
- type: 'pay'
- });
- });
- }
-
- if (items.length === 0) {
- list.innerHTML = '<li class="empty-msg">No reminders scheduled.</li>';
- return;
- }
-
- list.innerHTML = items.map(item =>
- `<li class="${item.type === 'pay' ? 'pay-item' : 'bill-item'}">${item.label}</li>`
- ).join('');
-}
-
-// ── HELPERS ──
-function formatDate(dateStr) {
- const [y, m, d] = dateStr.split('-');
- const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
- return `${months[parseInt(m) - 1]} ${parseInt(d)}, ${y}`;
-}
-
-function ordinal(n) {
- if (n > 3 && n < 21) return 'th';
- switch (n % 10) {
- case 1: return 'st';
- case 2: return 'nd';
- case 3: return 'rd';
- default: return 'th';
- }
-}
+};
